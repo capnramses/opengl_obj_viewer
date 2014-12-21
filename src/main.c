@@ -6,23 +6,52 @@
 #include "maths_funcs.hpp"
 #include "obj_parser.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "stb_image.h" // https://github.com/nothings/stb/
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h" // https://github.com/nothings/stb/
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <time.h>
+
+//
+// for parsing CL params
+int my_argc;
+char** my_argv;
 
 //
 // dimensions of the window drawing surface
 int gl_width = 800;
 int gl_height = 800;
 
-//
 // shaders to use
 char vs_file_name[256];
 char fs_file_name[256];
+
+// obj to load
+char obj_file_name[256];
+
+// texture file
+char texture_file_name[256];
+
+//
+// check CL params for string. if found return argc value
+// returns 0 if not present
+// i stole this code from DOOM
+int check_param (const char* s) {
+	int i;
+
+	for (i = 1; i < my_argc; i++) {
+		if (!strcasecmp (s, my_argv[i])) {
+			return i;
+		}
+	}
+
+	return 0;
+}
 
 //
 // copy a shader from a plain text file into a character array
@@ -55,18 +84,80 @@ bool parse_file_into_str (const char* file_name, char** shader_str) {
 	return true;
 }
 
-int main () {
+//
+// take screenshot with F11
+bool screencapture () {
+	unsigned char* buffer = (unsigned char*)malloc (gl_width * gl_height * 3);
+	glReadPixels (0, 0, gl_width, gl_height, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+	char name[1024];
+	long int t = time (NULL);
+	sprintf (name, "screenshot_%ld.png", t);
+	unsigned char* last_row = buffer + (gl_width * 3 * (gl_height - 1));
+	if (!stbi_write_png (name, gl_width, gl_height, 3, last_row, -3 * gl_width)) {
+		fprintf (stderr, "ERROR: could not write screenshot file %s\n", name);
+	}
+	free (buffer);
+	return true;
+}
+
+int main (int argc, char** argv) {
 	GLFWwindow* window = NULL;
 	const GLubyte* renderer;
 	const GLubyte* version;
 	GLuint shader_programme;
 	GLuint vao;
 	int point_count = 0;
+	int param = 0;
 	float a = 0.0f;
+	float scalef = 1.0f;
 	double prev;
+	vec3 vtra = vec3 (0.0f, 0.0f, 0.0f);
 	
+	my_argc = argc;
+	my_argv = argv;
 	strcpy (vs_file_name, "shaders/basic.vert");
 	strcpy (fs_file_name, "shaders/basic.frag");
+	
+	param = check_param ("--help");
+	if (param) {
+		printf ("\nOpenGL .obj Viewer.\nAnton Gerdelan 21 Dec 2014 @capnramses\n\n");
+		printf ("usage: ./viewer [-o FILE] [-t FILE] [-vs FILE] [-fs FILE]\n\n");
+		printf ("--help\t\t\tthis text\n");
+		printf ("-o FILE\t\t\t.obj to load\n");
+		printf ("-sca FLOAT\t\tscale mesh uniformly by this factor\n");
+		printf ("-tra FLOAT FLOAT FLOAT\ttranslate mesh by X Y Z\n");
+		printf ("-tex FILE\t\timage to use as texture\n");
+		printf ("-vs FILE\t\tvertex shader to use\n");
+		printf ("-vs FILE\t\tfragment shader to use\n");
+		printf ("\n");
+		return 0;
+	}
+	
+	param = check_param ("-o");
+	if (param && my_argc > param + 1) {
+		strcpy (obj_file_name, argv[param + 1]);
+	} else {
+		strcpy (obj_file_name, "cube.obj");
+	}
+	
+	param = check_param ("-sca");
+	if (param && my_argc > param + 1) {
+		scalef = atof (argv[param + 1]);
+	}
+	
+	param = check_param ("-tra");
+	if (param && my_argc > param + 3) {
+		vtra.v[0] = atof (argv[param + 1]);
+		vtra.v[1] = atof (argv[param + 2]);
+		vtra.v[2] = atof (argv[param + 3]);
+	}
+	
+	param = check_param ("-tex");
+	if (param && my_argc > param + 1) {
+		strcpy (texture_file_name, argv[param + 1]);
+	} else {
+		strcpy (texture_file_name, "textures/checkerboard.png");
+	}
 
 	//
 	// Start OpenGL using helper libraries
@@ -104,19 +195,22 @@ int main () {
 		GLfloat* vp = NULL; // array of vertex points
 		GLfloat* vn = NULL; // array of vertex normals (we haven't used these yet)
 		GLfloat* vt = NULL; // array of texture coordinates (or these)
-		GLuint points_vbo, texcoord_vbo;
+		GLuint points_vbo, texcoord_vbo, normals_vbo;
 
-		assert (load_obj_file ("cube.obj", vp, vt, vn, point_count));
+		assert (load_obj_file (obj_file_name, vp, vt, vn, point_count));
 	
 		glGenBuffers (1, &points_vbo);
 		glBindBuffer (GL_ARRAY_BUFFER, points_vbo);
 		// copy our points from the header file into our VBO on graphics hardware
 		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 3 * point_count, vp,
 			GL_STATIC_DRAW);
-		// and grab the normals
 		glGenBuffers (1, &texcoord_vbo);
 		glBindBuffer (GL_ARRAY_BUFFER, texcoord_vbo);
 		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 2 * point_count, vt,
+			GL_STATIC_DRAW);
+		glGenBuffers (1, &normals_vbo);
+		glBindBuffer (GL_ARRAY_BUFFER, normals_vbo);
+		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 3 * point_count, vn,
 			GL_STATIC_DRAW);
 	
 		glGenVertexArrays (1, &vao);
@@ -127,6 +221,9 @@ int main () {
 		glEnableVertexAttribArray (1);
 		glBindBuffer (GL_ARRAY_BUFFER, texcoord_vbo);
 		glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+		glEnableVertexAttribArray (2);
+		glBindBuffer (GL_ARRAY_BUFFER, normals_vbo);
+		glVertexAttribPointer (2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 		
 		free (vp);
 		free (vn);
@@ -156,19 +253,24 @@ int main () {
 		shader_programme = glCreateProgram ();
 		glAttachShader (shader_programme, fs);
 		glAttachShader (shader_programme, vs);
+		glBindAttribLocation (shader_programme, 0, "vp");
+		glBindAttribLocation (shader_programme, 1, "vt");
+		glBindAttribLocation (shader_programme, 2, "vn");
 		glLinkProgram (shader_programme);
 	}
 	
 	//
 	// Create some matrices
 	// --------------------------------------------------------------------------
-	mat4 M, V, P;
+	mat4 M, V, P, S, T;
 	vec3 cam_pos (0.0, 0.0, 5.0);
 	vec3 targ_pos (0.0, 0.0, 0.0);
 	vec3 up (0.0, 1.0, 0.0);
 	int M_loc, V_loc, P_loc;
 	
-	M = identity_mat4 ();//scale (identity_mat4 (), vec3 (0.05, 0.05, 0.05));
+	T = translate (identity_mat4 (), vtra);
+	S = scale (identity_mat4 (), vec3 (scalef, scalef, scalef));
+	M = T * S;
 	V = look_at (cam_pos, targ_pos, up);
 	P = perspective (67.0f, (float)gl_width / (float)gl_height, 0.1, 1000.0);
 	
@@ -181,34 +283,75 @@ int main () {
 	glUniformMatrix4fv (V_loc, 1, GL_FALSE, V.m);
 	glUniformMatrix4fv (P_loc, 1, GL_FALSE, P.m);
 	
-	/*int x,y,n;
-	unsigned char *data = stbi_load ("sword.png", &x, &y, &n, 0);
-	if (!data) {
-		fprintf (stderr, "ERROR: could not load image\n");
-		return 1;
+	//
+	// Create texture
+	// --------------------------------------------------------------------------
+	{
+		int x,y,n;
+		unsigned char* data;
+		GLuint tex;
+		
+		data = stbi_load (texture_file_name, &x, &y, &n, 4);
+		if (!data) {
+			fprintf (stderr, "ERROR: could not load image %s\n", texture_file_name);
+			return 1;
+		}
+		printf ("loaded image with %ix%ipx and %i chans\n", x, y, n);
+		
+		// NPOT check
+		if ((x & (x - 1)) != 0 || (y & (y - 1)) != 0) {
+			fprintf (stderr, "WARNING: texture is not power-of-two dimensions %s\n",
+				texture_file_name);
+		}
+	
+		// FLIP UP-SIDE DIDDLY-DOWN
+		// make upside-down copy for GL
+		{
+			unsigned char *imagePtr = &data[0];
+			int halfTheHeightInPixels = y / 2;
+			int heightInPixels = y;
+	
+			// Assuming RGBA for 4 components per pixel.
+			int numColorComponents = 4;
+			// Assuming each color component is an unsigned char.
+			int widthInChars = x * numColorComponents;
+			unsigned char *top = NULL;
+			unsigned char *bottom = NULL;
+			unsigned char temp = 0;
+			for (int h = 0; h < halfTheHeightInPixels; h++) {
+				top = imagePtr + h * widthInChars;
+				bottom = imagePtr + (heightInPixels - h - 1) * widthInChars;
+				for (int w = 0; w < widthInChars; w++) {
+					// Swap the chars around.
+					temp = *top;
+					*top = *bottom;
+					*bottom = temp;
+					++top;
+					++bottom;
+				}
+			}
+		}
+		
+		glGenTextures (1, &tex);
+		glActiveTexture (GL_TEXTURE0);
+		glBindTexture (GL_TEXTURE_2D, tex);
+		glTexImage2D (
+			GL_TEXTURE_2D,
+			0,
+			GL_RGBA,
+			x,
+			y,
+			0,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			data
+		);
+		stbi_image_free(data);
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	}
-	printf ("loaded image with [%i,%i] res and %i chans\n", x, y, n);
-	GLuint tex;
-	glGenTextures (1, &tex);
-	glActiveTexture (GL_TEXTURE0);
-	glBindTexture (GL_TEXTURE_2D, tex);
-	glTexImage2D (
-		GL_TEXTURE_2D,
-		0,
-		GL_RGBA,
-		x,
-		y,
-		0,
-		GL_RGBA,
-		GL_UNSIGNED_BYTE,
-		data
-	);
-	stbi_image_free(data);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	*/
 	
 	//
 	// Start rendering
@@ -219,6 +362,7 @@ int main () {
 
 	a = 0.0f;
 	prev = glfwGetTime ();
+	bool f11pressed = false;
 	while (!glfwWindowShouldClose (window)) {
 		double curr, elapsed;
 	
@@ -233,13 +377,26 @@ int main () {
 		glBindVertexArray (vao);
 	
 		a += sinf (elapsed * 50.0f);
-		M = rotate_y_deg (identity_mat4 (), a);
+		M = T * rotate_y_deg (S, a);
 		glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
 	
 		glDrawArrays (GL_TRIANGLES, 0, point_count);
 
 		glfwPollEvents ();
 		glfwSwapBuffers (window);
+		
+		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_F11)) {
+			f11pressed = true;
+		} else {
+			if (f11pressed) {
+				f11pressed = false;
+				screencapture ();
+			}
+		}
+		
+		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_ESCAPE)) {
+			glfwSetWindowShouldClose (window, 1);
+		}
 	}
 
 	return 0;
