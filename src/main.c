@@ -405,7 +405,7 @@ int main (int argc, char** argv) {
 	// --------------------------------------------------------------------------
 	glEnable (GL_DEPTH_TEST);
 	glDepthFunc (GL_LESS);
-	glClearColor (0.01, 0.01, 0.25, 1.0);
+	glClearColor (0.5, 0.5, 0.8, 1.0);
 
 	a = 0.0f;
 	prev = glfwGetTime ();
