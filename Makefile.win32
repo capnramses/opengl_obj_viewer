@@ -1,0 +1,12 @@
+BIN = viewobj32.exe
+CC = g++
+FLAGS = -Wall -pedantic
+INC = -I include -I lib/include
+LIB_PATH = lib/win32/
+LOC_LIB = $(LIB_PATH)libglew32.dll.a $(LIB_PATH)glfw3dll.a
+SYS_LIB = -lOpenGL32 -L ./ -lglew32 -lglfw3 -lm
+SRC = src/main.c src/obj_parser.cpp
+
+all:
+	${CC} ${FLAGS} -o ${BIN} ${SRC} ${INC} ${LOC_LIB} ${SYS_LIB}
+
