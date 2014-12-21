@@ -37,6 +37,10 @@ char obj_file_name[256];
 // texture file
 char texture_file_name[256];
 
+// built-in anti-aliasing to smooth jagged diagonal edges of polygons
+int msaa_samples = 16;
+// NOTE: if too high grainy crap appears on polygon edges
+
 //
 // check CL params for string. if found return argc value
 // returns 0 if not present
@@ -112,6 +116,7 @@ int main (int argc, char** argv) {
 	float scalef = 1.0f;
 	double prev;
 	vec3 vtra = vec3 (0.0f, 0.0f, 0.0f);
+	char win_title[256];
 	
 	my_argc = argc;
 	my_argv = argv;
@@ -173,7 +178,10 @@ int main (int argc, char** argv) {
 	glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); */
 
-	window = glfwCreateWindow (gl_width, gl_height, "Spinning Cube", NULL, NULL);
+	glfwWindowHint (GLFW_SAMPLES, msaa_samples);
+
+	sprintf (win_title, "obj viewer: %s", obj_file_name);
+	window = glfwCreateWindow (gl_width, gl_height, win_title, NULL, NULL);
 	if (!window) {
 		fprintf (stderr, "ERROR: opening OS window\n");
 		return 1;
