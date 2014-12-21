@@ -108,7 +108,9 @@ int main (int argc, char** argv) {
 	GLFWwindow* window = NULL;
 	const GLubyte* renderer;
 	const GLubyte* version;
-	GLuint shader_programme;
+	GLuint shader_programme, normals_sp;
+	int M_loc, V_loc, P_loc;
+	int normals_M_loc, normals_V_loc, normals_P_loc;
 	GLuint vao;
 	int point_count = 0;
 	int param = 0;
@@ -117,6 +119,8 @@ int main (int argc, char** argv) {
 	double prev;
 	vec3 vtra = vec3 (0.0f, 0.0f, 0.0f);
 	char win_title[256];
+	bool normals_mode = false;
+	bool npressed = false;
 	
 	my_argc = argc;
 	my_argv = argv;
@@ -134,6 +138,9 @@ int main (int argc, char** argv) {
 		printf ("-tex FILE\t\timage to use as texture\n");
 		printf ("-vs FILE\t\tvertex shader to use\n");
 		printf ("-vs FILE\t\tfragment shader to use\n");
+		printf ("\n");
+		printf ("F11\t\t\tscreenshot\n");
+		printf ("n\t\t\ttoggle normals visualisation\n");
 		printf ("\n");
 		return 0;
 	}
@@ -265,6 +272,38 @@ int main (int argc, char** argv) {
 		glBindAttribLocation (shader_programme, 1, "vt");
 		glBindAttribLocation (shader_programme, 2, "vn");
 		glLinkProgram (shader_programme);
+		M_loc = glGetUniformLocation (shader_programme, "M");
+		V_loc = glGetUniformLocation (shader_programme, "V");
+		P_loc = glGetUniformLocation (shader_programme, "P");
+	}
+	{
+		char* vertex_shader_str = NULL;
+		char* fragment_shader_str = NULL;
+		GLuint vs, fs;
+		
+		// load shader strings from text files
+		assert (parse_file_into_str ("shaders/normals.vert", &vertex_shader_str));
+		assert (parse_file_into_str ("shaders/normals.frag",
+			&fragment_shader_str));
+		vs = glCreateShader (GL_VERTEX_SHADER);
+		fs = glCreateShader (GL_FRAGMENT_SHADER);
+		glShaderSource (vs, 1, (const char**)&vertex_shader_str, NULL);
+		glShaderSource (fs, 1, (const char**)&fragment_shader_str, NULL);
+		// free memory
+		free (vertex_shader_str);
+		free (fragment_shader_str);
+		glCompileShader (vs);
+		glCompileShader (fs);
+		normals_sp = glCreateProgram ();
+		glAttachShader (normals_sp, fs);
+		glAttachShader (normals_sp, vs);
+		glBindAttribLocation (normals_sp, 0, "vp");
+		glBindAttribLocation (normals_sp, 1, "vt");
+		glBindAttribLocation (normals_sp, 2, "vn");
+		glLinkProgram (normals_sp);
+		normals_M_loc = glGetUniformLocation (normals_sp, "M");
+		normals_V_loc = glGetUniformLocation (normals_sp, "V");
+		normals_P_loc = glGetUniformLocation (normals_sp, "P");
 	}
 	
 	//
@@ -274,7 +313,6 @@ int main (int argc, char** argv) {
 	vec3 cam_pos (0.0, 0.0, 5.0);
 	vec3 targ_pos (0.0, 0.0, 0.0);
 	vec3 up (0.0, 1.0, 0.0);
-	int M_loc, V_loc, P_loc;
 	
 	T = translate (identity_mat4 (), vtra);
 	S = scale (identity_mat4 (), vec3 (scalef, scalef, scalef));
@@ -282,14 +320,15 @@ int main (int argc, char** argv) {
 	V = look_at (cam_pos, targ_pos, up);
 	P = perspective (67.0f, (float)gl_width / (float)gl_height, 0.1, 1000.0);
 	
-	M_loc = glGetUniformLocation (shader_programme, "M");
-	V_loc = glGetUniformLocation (shader_programme, "V");
-	P_loc = glGetUniformLocation (shader_programme, "P");
 	// send matrix values to shader immediately
 	glUseProgram (shader_programme);
 	glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
 	glUniformMatrix4fv (V_loc, 1, GL_FALSE, V.m);
 	glUniformMatrix4fv (P_loc, 1, GL_FALSE, P.m);
+	glUseProgram (normals_sp);
+	glUniformMatrix4fv (normals_M_loc, 1, GL_FALSE, M.m);
+	glUniformMatrix4fv (normals_V_loc, 1, GL_FALSE, V.m);
+	glUniformMatrix4fv (normals_P_loc, 1, GL_FALSE, P.m);
 	
 	//
 	// Create texture
@@ -380,26 +419,39 @@ int main (int argc, char** argv) {
 		curr = glfwGetTime ();
 		elapsed = curr - prev;
 		prev = curr;
-	
-		glUseProgram (shader_programme);
-		glBindVertexArray (vao);
-	
+
 		a += sinf (elapsed * 50.0f);
 		M = T * rotate_y_deg (S, a);
-		glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
-	
+
+		if (normals_mode) {
+			glUseProgram (normals_sp);
+			glUniformMatrix4fv (normals_M_loc, 1, GL_FALSE, M.m);
+		} else {
+			glUseProgram (shader_programme);
+			glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
+		}
+		glBindVertexArray (vao);
 		glDrawArrays (GL_TRIANGLES, 0, point_count);
 
 		glfwPollEvents ();
 		glfwSwapBuffers (window);
 		
-		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_F11)) {
-			f11pressed = true;
+		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_N)) {
+			if (!npressed) {
+				npressed = true;
+				normals_mode = !normals_mode;
+			}
 		} else {
-			if (f11pressed) {
-				f11pressed = false;
+			npressed = false;
+		}
+		
+		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_F11)) {
+			if (!f11pressed) {
+				f11pressed = true;
 				screencapture ();
 			}
+		} else {
+			f11pressed = false;
 		}
 		
 		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_ESCAPE)) {

@@ -35,12 +35,11 @@ You can specify:
     -tra 0.0 -1.0 0.0
 
 You can take a screenshot with F11
+You can toggle visualisation of normals with 'n'
 
 ##To Do##
 
 * Switches to change vertex and fragment shaders
-* Anti-aliasing
-* Modes to display normals or texture coordinates for debugging
 * Support meshes with different components
 * Display my .apg format meshes as well
 * A version for WebGL
