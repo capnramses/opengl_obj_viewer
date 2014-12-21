@@ -9,6 +9,6 @@ uniform mat4 M, V, P;
 varying vec3 n;
 
 void main () {
-	n = vec3 (V * M * vec4 (vn, 0.0));
+	n = abs (vn);
 	gl_Position = P * V * M * vec4 (vp, 1.0);
 }
