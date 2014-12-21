@@ -20,36 +20,38 @@ int gl_width = 800;
 int gl_height = 800;
 
 //
+// shaders to use
+char vs_file_name[256];
+char fs_file_name[256];
+
+//
 // copy a shader from a plain text file into a character array
-bool parse_file_into_str (
-	const char* file_name, char* shader_str, int max_len
-) {
-	FILE* file = fopen (file_name , "r");
-	int current_len = 0;
+bool parse_file_into_str (const char* file_name, char** shader_str) {
+	FILE* file;
+	long sz;
 	char line[2048];
 
-	shader_str[0] = '\0'; /* reset string */
+	line[0] = '\0';
+	
+	file = fopen (file_name , "r");
 	if (!file) {
 		fprintf (stderr, "ERROR: opening file for reading: %s\n", file_name);
 		return false;
 	}
-	strcpy (line, ""); /* remember to clean up before using for first time! */
+	
+	// get file size and allocate memory for string
+	assert (0 == fseek (file, 0, SEEK_END));
+	sz = ftell (file);
+	rewind (file);
+	*shader_str = (char*)malloc (sz);
+	*shader_str[0] = '\0';
+	
 	while (!feof (file)) {
-		if (NULL != fgets (line, 2048, file)) {
-			current_len += strlen (line); /* +1 for \n at end */
-			if (current_len >= max_len) {
-				fprintf (stderr, 
-					"ERROR: shader length is longer than string buffer length %i\n",
-					max_len
-				);
-			}
-			strcat (shader_str, line);
+		if (fgets (line, 2048, file)) {
+			strcat (*shader_str, line);
 		}
 	}
-	if (EOF == fclose (file)) { /* probably unnecesssary validation */
-		fprintf (stderr, "ERROR: closing file from reading %s\n", file_name);
-		return false;
-	}
+
 	return true;
 }
 
@@ -59,6 +61,12 @@ int main () {
 	const GLubyte* version;
 	GLuint shader_programme;
 	GLuint vao;
+	int point_count = 0;
+	float a = 0.0f;
+	double prev;
+	
+	strcpy (vs_file_name, "shaders/basic.vert");
+	strcpy (fs_file_name, "shaders/basic.frag");
 
 	//
 	// Start OpenGL using helper libraries
@@ -84,13 +92,11 @@ int main () {
 	glewExperimental = GL_TRUE;
 	glewInit ();
 
-	/* get version info */
-	renderer = glGetString (GL_RENDERER); /* get renderer string */
-	version = glGetString (GL_VERSION); /* version as a string */
+	renderer = glGetString (GL_RENDERER);
+	version = glGetString (GL_VERSION);
 	printf ("Renderer: %s\n", renderer);
 	printf ("OpenGL version supported %s\n", version);
 
-	int point_count = 0;
 	//
 	// Set up vertex buffers and vertex array object
 	// --------------------------------------------------------------------------
@@ -98,20 +104,20 @@ int main () {
 		GLfloat* vp = NULL; // array of vertex points
 		GLfloat* vn = NULL; // array of vertex normals (we haven't used these yet)
 		GLfloat* vt = NULL; // array of texture coordinates (or these)
-		assert (load_obj_file ("cube.obj", vp, vt, vn, point_count));
-		
-	
 		GLuint points_vbo, texcoord_vbo;
+
+		assert (load_obj_file ("cube.obj", vp, vt, vn, point_count));
+	
 		glGenBuffers (1, &points_vbo);
 		glBindBuffer (GL_ARRAY_BUFFER, points_vbo);
 		// copy our points from the header file into our VBO on graphics hardware
-		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 3 * point_count,
-			vp, GL_STATIC_DRAW);
+		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 3 * point_count, vp,
+			GL_STATIC_DRAW);
 		// and grab the normals
 		glGenBuffers (1, &texcoord_vbo);
 		glBindBuffer (GL_ARRAY_BUFFER, texcoord_vbo);
-		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 2 * point_count,
-			vt, GL_STATIC_DRAW);
+		glBufferData (GL_ARRAY_BUFFER, sizeof (float) * 2 * point_count, vt,
+			GL_STATIC_DRAW);
 	
 		glGenVertexArrays (1, &vao);
 		glBindVertexArray (vao);
@@ -126,20 +132,18 @@ int main () {
 		free (vn);
 		free (vt);
 	}
+	
 	//
 	// Load shaders from files
 	// --------------------------------------------------------------------------
 	{
-		char* vertex_shader_str;
-		char* fragment_shader_str;
-		
-		// allocate some memory to store shader strings
-		vertex_shader_str = (char*)malloc (81920);
-		fragment_shader_str = (char*)malloc (81920);
-		// load shader strings from text files
-		assert (parse_file_into_str ("teapot.vert", vertex_shader_str, 81920));
-		assert (parse_file_into_str ("teapot.frag", fragment_shader_str, 81920));
+		char* vertex_shader_str = NULL;
+		char* fragment_shader_str = NULL;
 		GLuint vs, fs;
+		
+		// load shader strings from text files
+		assert (parse_file_into_str (vs_file_name, &vertex_shader_str));
+		assert (parse_file_into_str (fs_file_name, &fragment_shader_str));
 		vs = glCreateShader (GL_VERTEX_SHADER);
 		fs = glCreateShader (GL_FRAGMENT_SHADER);
 		glShaderSource (vs, 1, (const char**)&vertex_shader_str, NULL);
@@ -153,24 +157,24 @@ int main () {
 		glAttachShader (shader_programme, fs);
 		glAttachShader (shader_programme, vs);
 		glLinkProgram (shader_programme);
-		/* TODO NOTE: you should check for errors and print logs after compiling and also linking shaders */
 	}
 	
 	//
 	// Create some matrices
 	// --------------------------------------------------------------------------
-		
 	mat4 M, V, P;
-	M = identity_mat4 ();//scale (identity_mat4 (), vec3 (0.05, 0.05, 0.05));
 	vec3 cam_pos (0.0, 0.0, 5.0);
 	vec3 targ_pos (0.0, 0.0, 0.0);
 	vec3 up (0.0, 1.0, 0.0);
+	int M_loc, V_loc, P_loc;
+	
+	M = identity_mat4 ();//scale (identity_mat4 (), vec3 (0.05, 0.05, 0.05));
 	V = look_at (cam_pos, targ_pos, up);
 	P = perspective (67.0f, (float)gl_width / (float)gl_height, 0.1, 1000.0);
 	
-	int M_loc = glGetUniformLocation (shader_programme, "M");
-	int V_loc = glGetUniformLocation (shader_programme, "V");
-	int P_loc = glGetUniformLocation (shader_programme, "P");
+	M_loc = glGetUniformLocation (shader_programme, "M");
+	V_loc = glGetUniformLocation (shader_programme, "V");
+	P_loc = glGetUniformLocation (shader_programme, "P");
 	// send matrix values to shader immediately
 	glUseProgram (shader_programme);
 	glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
@@ -209,32 +213,31 @@ int main () {
 	//
 	// Start rendering
 	// --------------------------------------------------------------------------
-	// tell GL to only draw onto a pixel if the fragment is closer to the viewer
-	glEnable (GL_DEPTH_TEST); // enable depth-testing
-	glDepthFunc (GL_LESS); // depth-testing interprets a smaller value as "closer"
+	glEnable (GL_DEPTH_TEST);
+	glDepthFunc (GL_LESS);
 	glClearColor (0.01, 0.01, 0.25, 1.0);
 
-	float a = 0.0f;
-	double prev = glfwGetTime ();
+	a = 0.0f;
+	prev = glfwGetTime ();
 	while (!glfwWindowShouldClose (window)) {
+		double curr, elapsed;
+	
 		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// just the default viewport, covering the whole render area
 		glViewport (0, 0, gl_width, gl_height);
-		
-		double curr = glfwGetTime ();
-		double elapsed = curr - prev;
+	
+		curr = glfwGetTime ();
+		elapsed = curr - prev;
 		prev = curr;
-		
+	
 		glUseProgram (shader_programme);
 		glBindVertexArray (vao);
-		
+	
 		a += sinf (elapsed * 50.0f);
 		M = rotate_y_deg (identity_mat4 (), a);
 		glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
-		
+	
 		glDrawArrays (GL_TRIANGLES, 0, point_count);
 
-		/* this just updates window events and keyboard input events (not used yet) */
 		glfwPollEvents ();
 		glfwSwapBuffers (window);
 	}
