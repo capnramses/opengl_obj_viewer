@@ -64,6 +64,7 @@ bool parse_file_into_str (const char* file_name, char** shader_str) {
 	long sz;
 	char line[2048];
 
+	printf ("parsing %s\n", file_name);
 	line[0] = '\0';
 	
 	file = fopen (file_name , "r");
@@ -74,8 +75,9 @@ bool parse_file_into_str (const char* file_name, char** shader_str) {
 	
 	// get file size and allocate memory for string
 	assert (0 == fseek (file, 0, SEEK_END));
-	sz = ftell (file);
+	sz = ftell (file) + 1; // +1 for \0
 	rewind (file);
+	// +1 for line ending or sthng at end
 	*shader_str = (char*)malloc (sz);
 	*shader_str[0] = '\0';
 	
@@ -109,7 +111,7 @@ int main (int argc, char** argv) {
 	const GLubyte* renderer;
 	const GLubyte* version;
 	GLuint shader_programme, normals_sp;
-	int M_loc, V_loc, P_loc;
+	int M_loc, V_loc, P_loc, time_loc;
 	int normals_M_loc, normals_V_loc, normals_P_loc;
 	GLuint vao;
 	int point_count = 0;
@@ -127,8 +129,6 @@ int main (int argc, char** argv) {
 	
 	my_argc = argc;
 	my_argv = argv;
-	strcpy (vs_file_name, "shaders/basic.vert");
-	strcpy (fs_file_name, "shaders/basic.frag");
 	
 	param = check_param ("--help");
 	if (param) {
@@ -140,7 +140,7 @@ int main (int argc, char** argv) {
 		printf ("-tra FLOAT FLOAT FLOAT\ttranslate mesh by X Y Z\n");
 		printf ("-tex FILE\t\timage to use as texture\n");
 		printf ("-vs FILE\t\tvertex shader to use\n");
-		printf ("-vs FILE\t\tfragment shader to use\n");
+		printf ("-fs FILE\t\tfragment shader to use\n");
 		printf ("\n");
 		printf ("F11\t\t\tscreenshot\n");
 		printf ("n\t\t\ttoggle normals visualisation\n");
@@ -153,6 +153,20 @@ int main (int argc, char** argv) {
 		strcpy (obj_file_name, argv[param + 1]);
 	} else {
 		strcpy (obj_file_name, "cube.obj");
+	}
+	
+	param = check_param ("-vs");
+	if (param && my_argc > param + 1) {
+		strcpy (vs_file_name, argv[param + 1]);
+	} else {
+		strcpy (vs_file_name, "shaders/basic.vert");
+	}
+	
+	param = check_param ("-fs");
+	if (param && my_argc > param + 1) {
+		strcpy (fs_file_name, argv[param + 1]);
+	} else {
+		strcpy (fs_file_name, "shaders/basic.frag");
 	}
 	
 	param = check_param ("-sca");
@@ -278,6 +292,8 @@ int main (int argc, char** argv) {
 		M_loc = glGetUniformLocation (shader_programme, "M");
 		V_loc = glGetUniformLocation (shader_programme, "V");
 		P_loc = glGetUniformLocation (shader_programme, "P");
+		// attempt this. won't use if < 0
+		time_loc = glGetUniformLocation (shader_programme, "time");
 	}
 	{
 		char* vertex_shader_str = NULL;
@@ -431,6 +447,9 @@ int main (int argc, char** argv) {
 		} else {
 			glUseProgram (shader_programme);
 			glUniformMatrix4fv (M_loc, 1, GL_FALSE, M.m);
+			if (time_loc > 0) {
+				glUniform1f (time_loc, (float)curr);
+			}
 		}
 		glBindVertexArray (vao);
 		glDrawArrays (GL_TRIANGLES, 0, point_count);

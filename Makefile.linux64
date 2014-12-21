@@ -1,6 +1,6 @@
 BIN = viewobj64
 CC = g++
-FLAGS = -Wall -pedantic -m64
+FLAGS = -Wall -pedantic -m64 -g
 INC = -I include -I lib/include
 LIB_PATH = lib/linux_x86_64/
 LOC_LIB = $(LIB_PATH)libGLEW.a $(LIB_PATH)libglfw3.a

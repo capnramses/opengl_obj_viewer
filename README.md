@@ -33,6 +33,10 @@ You can specify:
 
     -tex mytexture.png
 
+* shaders to load
+
+    -vs myshader.vert -fs myshader.frag
+
 * scale to apply uniformly (if the mesh is too big to fit in view)
 
     -sca 0.5
@@ -49,7 +53,6 @@ You can specify:
 
 ##To Do##
 
-* Switches to change vertex and fragment shaders
 * Support meshes with different components
 * Display my .apg format meshes as well
 * A version for WebGL
