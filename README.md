@@ -26,16 +26,26 @@ If you run the viewer with no parameters it uses a default mesh and texture.
 You can specify:
 
 * .obj file to load
+
     -o mymesh.obj
+
 * texture to load
+
     -tex mytexture.png
+
 * scale to apply uniformly (if the mesh is too big to fit in view)
+
     -sca 0.5
+
 * translation XYZ to apply (to centre mesh in view)
+
     -tra 0.0 -1.0 0.0
 
-You can take a screenshot with F11
-You can toggle visualisation of normals with 'n'
+##Keys##
+
+* F11 - screenshot
+* N - toggle visualisation of normals
+* P - fill/wireframe/points
 
 ##To Do##
 

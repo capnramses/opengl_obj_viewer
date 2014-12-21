@@ -121,6 +121,9 @@ int main (int argc, char** argv) {
 	char win_title[256];
 	bool normals_mode = false;
 	bool npressed = false;
+	bool f11pressed = false;
+	bool ppressed = false;
+	int poly_mode = 0;
 	
 	my_argc = argc;
 	my_argv = argv;
@@ -409,7 +412,6 @@ int main (int argc, char** argv) {
 
 	a = 0.0f;
 	prev = glfwGetTime ();
-	bool f11pressed = false;
 	while (!glfwWindowShouldClose (window)) {
 		double curr, elapsed;
 	
@@ -432,7 +434,6 @@ int main (int argc, char** argv) {
 		}
 		glBindVertexArray (vao);
 		glDrawArrays (GL_TRIANGLES, 0, point_count);
-
 		glfwPollEvents ();
 		glfwSwapBuffers (window);
 		
@@ -443,6 +444,24 @@ int main (int argc, char** argv) {
 			}
 		} else {
 			npressed = false;
+		}
+		
+		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_P)) {
+			if (!ppressed) {
+				ppressed = true;
+				poly_mode++;
+				poly_mode = poly_mode % 3;
+				
+				if (0 == poly_mode) {
+					glPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
+				} else if (1 == poly_mode) {
+					glPolygonMode (GL_FRONT_AND_BACK, GL_LINE);
+				} else {
+					glPolygonMode (GL_FRONT_AND_BACK, GL_POINT);
+				}
+			}
+		} else {
+			ppressed = false;
 		}
 		
 		if (GLFW_PRESS == glfwGetKey (window, GLFW_KEY_F11)) {
