@@ -5,7 +5,7 @@ INC = -I include -I lib/include
 LIB_PATH = lib/win32/
 LOC_LIB = $(LIB_PATH)libglew32.dll.a $(LIB_PATH)glfw3dll.a
 SYS_LIB = -lOpenGL32 -L ./ -lglew32 -lglfw3 -lm
-SRC = src/main.c src/obj_parser.cpp
+SRC = src/main.c src/obj_parser.c
 
 all:
 	${CC} ${FLAGS} -o ${BIN} ${SRC} ${INC} ${LOC_LIB} ${SYS_LIB}

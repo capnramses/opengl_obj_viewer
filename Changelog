@@ -1,3 +1,7 @@
+22 dec 2014
+* converted C++ obj parser to C - just a matter of changing pointer deref.
+style for in-function malloc
+
 21 dec 2014
 * initial commit
 * changed window title to mesh name
