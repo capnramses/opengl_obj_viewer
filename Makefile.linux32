@@ -5,7 +5,7 @@ INC = -I include -I lib/include
 LIB_PATH = lib/linux_i386/
 LOC_LIB = $(LIB_PATH)libGLEW.a $(LIB_PATH)libglfw3.a
 SYS_LIB = -lGL -lX11 -lXxf86vm -lXrandr -lpthread -lXi -lm
-SRC = src/main.c src/obj_parser.cpp
+SRC = src/main.c src/obj_parser.c
 
 all:
 	${CC} ${FLAGS} -o ${BIN} ${SRC} ${INC} ${LOC_LIB} ${SYS_LIB}

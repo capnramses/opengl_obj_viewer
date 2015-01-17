@@ -5,7 +5,7 @@ INC = -I include -I lib/include
 LIB_PATH = lib/osx_64/
 LOC_LIB = $(LIB_PATH)libGLEW.a $(LIB_PATH)libglfw3.a
 FRAMEWORKS = -framework Cocoa -framework OpenGL -framework IOKit
-SRC = src/main.c src/obj_parser.cpp
+SRC = src/main.c src/obj_parser.c
 
 all:
 	${CC} ${FLAGS} ${FRAMEWORKS} -o ${BIN} ${SRC} ${INC} ${LOC_LIB}

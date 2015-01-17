@@ -229,7 +229,7 @@ int main (int argc, char** argv) {
 		GLfloat* vt = NULL; // array of texture coordinates (or these)
 		GLuint points_vbo, texcoord_vbo, normals_vbo;
 
-		assert (load_obj_file (obj_file_name, vp, vt, vn, point_count));
+		assert (load_obj_file (obj_file_name, &vp, &vt, &vn, &point_count));
 	
 		glGenBuffers (1, &points_vbo);
 		glBindBuffer (GL_ARRAY_BUFFER, points_vbo);
@@ -256,7 +256,6 @@ int main (int argc, char** argv) {
 		glEnableVertexAttribArray (2);
 		glBindBuffer (GL_ARRAY_BUFFER, normals_vbo);
 		glVertexAttribPointer (2, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-		
 		free (vp);
 		free (vn);
 		free (vt);
