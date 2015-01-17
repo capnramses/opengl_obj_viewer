@@ -425,6 +425,14 @@ int main (int argc, char** argv) {
 	glEnable (GL_DEPTH_TEST);
 	glDepthFunc (GL_LESS);
 	glClearColor (0.5, 0.5, 0.8, 1.0);
+	
+	glEnable (GL_CULL_FACE); // enable culling of faces
+	glCullFace (GL_BACK);
+	glFrontFace (GL_CCW);
+	
+	glEnable (GL_BLEND);
+	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glDepthMask (GL_FALSE);
 
 	a = 0.0f;
 	prev = glfwGetTime ();
