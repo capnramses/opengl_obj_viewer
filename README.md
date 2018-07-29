@@ -1,11 +1,11 @@
-#OpenGL .obj Viewer#
+# OpenGL .obj Viewer #
 
 A simple OpenGL viewer for .obj files.
 I wrote it for OpenGL 2.1 (with VAO and shaders) so that it runs reliably on
 lots of machines.
 I might extend or fork this to do more interesting things.
 
-##Limitations##
+## Limitations ##
 
 .obj files must have:
 * points
@@ -17,7 +17,7 @@ and must be triangulated
 MTL files are not supported.
 
 
-##Instructions##
+## Instructions ##
 
 If you run the viewer with no parameters it uses a default mesh and texture.
 
@@ -45,13 +45,13 @@ You can specify:
 
     -tra 0.0 -1.0 0.0
 
-##Keys##
+## Keys ##
 
 * F11 - screenshot
 * N - toggle visualisation of normals
 * P - fill/wireframe/points
 
-##To Do##
+## To Do ##
 
 * Support meshes with different components
 * Display my .apg format meshes as well
